@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Assets Booking</string>
+    <string name="title_activity_main">Assets Booking</string>
+    <string name="package_name">com.assetbooking.app</string>
+    <string name="custom_url_scheme">com.assetbooking.app</string>
+</resources>
