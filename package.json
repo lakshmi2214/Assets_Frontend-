@@ -1,7 +1,7 @@
 {
   "name": "asset_booking_system",
   "version": "1.0.0",
-  "homepage": "https://asset-booking-frontendn.vercel.app",
+  "homepage": ".",
   "private": true,
   "dependencies": {
     "@capacitor/android": "^8.0.2",
