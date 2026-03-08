@@ -23,8 +23,17 @@ export default function AssetList() {
         .catch(() => [])
     ])
       .then(([assetsData, categoriesData]) => {
-        setAssets(Array.isArray(assetsData) ? assetsData : []);
-        setCategories(Array.isArray(categoriesData) ? categoriesData : []);
+        if (Array.isArray(assetsData) && assetsData.length > 0) {
+          setAssets(assetsData);
+        } else {
+          setAssets(MOCK_ASSETS);
+        }
+
+        if (Array.isArray(categoriesData) && categoriesData.length > 0) {
+          setCategories(categoriesData);
+        } else {
+          setCategories(MOCK_CATEGORIES);
+        }
       })
       .catch(() => {
         setAssets(MOCK_ASSETS);

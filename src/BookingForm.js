@@ -40,16 +40,27 @@ export default function AssetBooking() {
       }).catch(() => [])
     ])
       .then(([assetsData, categoriesData]) => {
-        setAssets(assetsData);
-        if (Array.isArray(categoriesData)) {
-          setCategories(categoriesData);
+        if (Array.isArray(assetsData) && assetsData.length > 0) {
+          setAssets(assetsData);
+          const map = new Map();
+          assetsData.forEach((a) => {
+            if (a.location) map.set(a.location.id, a.location);
+          });
+          setLocations(Array.from(map.values()));
+        } else {
+          setAssets(MOCK_ASSETS);
+          const map = new Map();
+          MOCK_ASSETS.forEach((a) => {
+            if (a.location) map.set(a.location.id, a.location);
+          });
+          setLocations(Array.from(map.values()));
         }
 
-        const map = new Map();
-        assetsData.forEach((a) => {
-          if (a.location) map.set(a.location.id, a.location);
-        });
-        setLocations(Array.from(map.values()));
+        if (Array.isArray(categoriesData) && categoriesData.length > 0) {
+          setCategories(categoriesData);
+        } else {
+          setCategories(MOCK_CATEGORIES);
+        }
         setMsg('');
       })
       .catch(() => {
