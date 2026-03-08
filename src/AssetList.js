@@ -15,30 +15,68 @@ export default function AssetList() {
   const [filter, setFilter] = useState(null);
 
   useEffect(() => {
-    Promise.all([
-      fetch(`${API_BASE}/api/v1/assets/`, { headers: { 'Content-Type': 'application/json' } })
-        .then(r => { if (!r.ok) throw new Error('assets'); return r.json(); }),
-      fetch(`${API_BASE}/api/v1/categories/`, { headers: { 'Content-Type': 'application/json' } })
-        .then(r => { if (!r.ok) throw new Error('categories'); return r.json(); })
-        .catch(() => [])
-    ])
-      .then(([assetsData, categoriesData]) => {
-        if (Array.isArray(assetsData) && assetsData.length > 0) {
-          setAssets(assetsData);
-        } else {
-          setAssets(MOCK_ASSETS);
-        }
+    let isMounted = true;
 
-        if (Array.isArray(categoriesData) && categoriesData.length > 0) {
-          setCategories(categoriesData);
-        } else {
+    const loadData = async () => {
+      // 1. Check for standalone mode
+      const useMock = localStorage.getItem('standalone_mode') === 'true';
+
+      if (useMock) {
+        if (isMounted) {
+          setAssets(MOCK_ASSETS);
           setCategories(MOCK_CATEGORIES);
         }
-      })
-      .catch(() => {
-        setAssets(MOCK_ASSETS);
-        setCategories(MOCK_CATEGORIES);
-      });
+        return;
+      }
+
+      // 2. Try fetch with timeout
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+        const [assetsRes, categoriesRes] = await Promise.all([
+          fetch(`${API_BASE}/api/v1/assets/`, {
+            headers: { 'Content-Type': 'application/json' },
+            signal: controller.signal
+          }),
+          fetch(`${API_BASE}/api/v1/categories/`, {
+            headers: { 'Content-Type': 'application/json' },
+            signal: controller.signal
+          }).catch(() => ({ ok: false }))
+        ]);
+
+        clearTimeout(timeoutId);
+
+        let aData = [];
+        let cData = [];
+
+        if (assetsRes.ok) aData = await assetsRes.json();
+        if (categoriesRes.ok) cData = await categoriesRes.json();
+
+        if (isMounted) {
+          if (Array.isArray(aData) && aData.length > 0) {
+            setAssets(aData);
+          } else {
+            setAssets(MOCK_ASSETS);
+          }
+
+          if (Array.isArray(cData) && cData.length > 0) {
+            setCategories(cData);
+          } else {
+            setCategories(MOCK_CATEGORIES);
+          }
+        }
+      } catch (err) {
+        console.error("AssetList fetch error:", err);
+        if (isMounted) {
+          setAssets(MOCK_ASSETS);
+          setCategories(MOCK_CATEGORIES);
+        }
+      }
+    };
+
+    loadData();
+    return () => { isMounted = false; };
   }, []);
 
   // ─── Derive filtered assets ────────────────────────────────────────────────

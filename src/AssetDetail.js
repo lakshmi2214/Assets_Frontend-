@@ -10,35 +10,71 @@ export default function AssetDetail() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    let isMounted = true;
     setLoading(true);
-    fetch(`${API_BASE}/api/v1/assets/${id}/`, {
-      method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
-    })
-      .then(r => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return r.json();
-      })
-      .then(asset => {
-        setAsset(asset);
-        setError(null);
-      })
-      .catch((err) => {
-        console.error('Error loading asset:', err);
-        // Fallback to mock data
-        import('./mockData').then(m => {
-          const mockAsset = m.MOCK_ASSETS.find(a => String(a.id) === String(id));
-          if (mockAsset) {
-            setAsset(mockAsset);
-            setError(null);
-          } else {
-            setError('Failed to load asset details');
-          }
-        }).catch(() => {
-          setError('Failed to load asset details');
+
+    const loadData = async () => {
+      // 1. Check for standalone mode
+      const useMock = localStorage.getItem('standalone_mode') === 'true';
+
+      if (useMock) {
+        if (isMounted) {
+          import('./mockData').then(m => {
+            const mockAsset = m.MOCK_ASSETS.find(a => String(a.id) === String(id));
+            if (mockAsset) {
+              setAsset(mockAsset);
+              setError(null);
+            } else {
+              setError('Failed to load asset details');
+            }
+            setLoading(false);
+          });
+        }
+        return;
+      }
+
+      // 2. Try fetch with timeout
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+        const response = await fetch(`${API_BASE}/api/v1/assets/${id}/`, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+          signal: controller.signal
         });
-      })
-      .finally(() => setLoading(false));
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+
+        if (isMounted) {
+          setAsset(data);
+          setError(null);
+        }
+      } catch (err) {
+        console.error('Error loading asset, falling back to mock:', err);
+        if (isMounted) {
+          import('./mockData').then(m => {
+            const mockAsset = m.MOCK_ASSETS.find(a => String(a.id) === String(id));
+            if (mockAsset) {
+              setAsset(mockAsset);
+              setError(null);
+            } else {
+              setError('Failed to load asset details');
+            }
+          }).catch(() => {
+            setError('Failed to load asset details');
+          });
+        }
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    loadData();
+    return () => { isMounted = false; };
   }, [id]);
 
   if (loading) return (

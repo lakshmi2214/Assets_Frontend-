@@ -31,50 +31,98 @@ export default function AssetBooking() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let isMounted = true;
     setLoading(true);
-    Promise.all([
-      fetch(`${API_BASE}/api/v1/assets/`, { headers: { 'Content-Type': 'application/json' } }).then(r => r.json()),
-      fetch(`${API_BASE}/api/v1/categories/`, { headers: { 'Content-Type': 'application/json' } }).then(r => {
-        if (r.ok) return r.json();
-        return [];
-      }).catch(() => [])
-    ])
-      .then(([assetsData, categoriesData]) => {
-        if (Array.isArray(assetsData) && assetsData.length > 0) {
-          setAssets(assetsData);
+
+    const loadInitialData = async () => {
+      // 1. Check if we should use mock data immediately
+      const useMock = !API_BASE || localStorage.getItem('standalone_mode') === 'true';
+
+      if (useMock) {
+        console.log("Using mock data in BookingForm");
+        if (isMounted) {
+          setAssets(MOCK_ASSETS);
+          setCategories(MOCK_CATEGORIES);
           const map = new Map();
-          assetsData.forEach((a) => {
+          MOCK_ASSETS.forEach((a) => {
             if (a.location) map.set(a.location.id, a.location);
           });
           setLocations(Array.from(map.values()));
-        } else {
+          setLoading(false);
+        }
+        return;
+      }
+
+      // 2. Try fetching from backend with a timeout
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
+
+        const [assetsRes, categoriesRes] = await Promise.all([
+          fetch(`${API_BASE}/api/v1/assets/`, {
+            headers: { 'Content-Type': 'application/json' },
+            signal: controller.signal
+          }),
+          fetch(`${API_BASE}/api/v1/categories/`, {
+            headers: { 'Content-Type': 'application/json' },
+            signal: controller.signal
+          }).catch(() => ({ ok: false }))
+        ]);
+
+        clearTimeout(timeoutId);
+
+        let assetsData = [];
+        let categoriesData = [];
+
+        if (assetsRes.ok) {
+          assetsData = await assetsRes.json();
+        }
+
+        if (categoriesRes.ok) {
+          categoriesData = await categoriesRes.json();
+        }
+
+        if (isMounted) {
+          if (Array.isArray(assetsData) && assetsData.length > 0) {
+            setAssets(assetsData);
+            const map = new Map();
+            assetsData.forEach((a) => {
+              if (a.location) map.set(a.location.id, a.location);
+            });
+            setLocations(Array.from(map.values()));
+          } else {
+            setAssets(MOCK_ASSETS);
+            const map = new Map();
+            MOCK_ASSETS.forEach((a) => {
+              if (a.location) map.set(a.location.id, a.location);
+            });
+            setLocations(Array.from(map.values()));
+          }
+
+          if (Array.isArray(categoriesData) && categoriesData.length > 0) {
+            setCategories(categoriesData);
+          } else {
+            setCategories(MOCK_CATEGORIES);
+          }
+        }
+      } catch (err) {
+        console.error("Fetch error, falling back to mock:", err);
+        if (isMounted) {
           setAssets(MOCK_ASSETS);
+          setCategories(MOCK_CATEGORIES);
           const map = new Map();
           MOCK_ASSETS.forEach((a) => {
             if (a.location) map.set(a.location.id, a.location);
           });
           setLocations(Array.from(map.values()));
         }
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
 
-        if (Array.isArray(categoriesData) && categoriesData.length > 0) {
-          setCategories(categoriesData);
-        } else {
-          setCategories(MOCK_CATEGORIES);
-        }
-        setMsg('');
-      })
-      .catch(() => {
-        // Fallback to local data engine
-        setAssets(MOCK_ASSETS);
-        setCategories(MOCK_CATEGORIES);
-
-        const map = new Map();
-        MOCK_ASSETS.forEach((a) => {
-          if (a.location) map.set(a.location.id, a.location);
-        });
-        setLocations(Array.from(map.values()));
-      })
-      .finally(() => setLoading(false));
+    loadInitialData();
+    return () => { isMounted = false; };
   }, []);
 
   function toISO(dt) {
