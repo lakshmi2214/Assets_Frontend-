@@ -95,7 +95,7 @@ export default function AssetBooking() {
       } catch (err) {
         console.error("Fetch error, falling back to mock data:", err);
         if (isMounted) {
-          setMsg('Offline mode: Using local mock data.');
+          setMsg('');
           setAssets(MOCK_ASSETS);
           const map = new Map();
           MOCK_ASSETS.forEach((a) => {
