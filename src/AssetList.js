@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, Button, Container, Row, Col, Badge, Dropdown, DropdownButton } from 'react-bootstrap';
 import 'bootstrap/dist/css/bootstrap.min.css';
-import { API_BASE } from './auth';
+import { API_BASE, isStandaloneMode } from './auth';
 import { MOCK_ASSETS, MOCK_CATEGORIES } from './mockData';
 
 export default function AssetList() {
@@ -18,6 +18,15 @@ export default function AssetList() {
     let isMounted = true;
 
     const loadData = async () => {
+      // If in standalone mode, use mock data immediately
+      if (isStandaloneMode()) {
+        if (isMounted) {
+          setAssets(Array.isArray(MOCK_ASSETS) ? MOCK_ASSETS : []);
+          setCategories(Array.isArray(MOCK_CATEGORIES) ? MOCK_CATEGORIES : []);
+        }
+        return;
+      }
+
       try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 8000);
@@ -72,18 +81,19 @@ export default function AssetList() {
 
 
   const filteredAssets = useMemo(() => {
+    if (!Array.isArray(assets)) return [];
     if (!filter) return assets;
 
     if (filter.type === 'category') {
-
       return assets.filter(a => {
+        if (!a) return false;
         const catMatch = a.category && (
           a.category.id === filter.id ||
           String(a.category.id) === String(filter.id)
         );
 
-        const nameMatch = a.category && (
-          a.category.name === (categories.find(c => c.id === filter.id) || {}).name
+        const nameMatch = a.category && Array.isArray(categories) && (
+          a.category.name === (categories.find(c => c && c.id === filter.id) || {}).name
         );
         return catMatch || nameMatch;
       });
@@ -91,14 +101,16 @@ export default function AssetList() {
 
     if (filter.type === 'subcategory') {
       return assets.filter(a => {
+        if (!a) return false;
         const subMatch = a.subcategory && (
           a.subcategory.id === filter.id ||
           String(a.subcategory.id) === String(filter.id)
         );
         const nameMatch = a.subcategory && (() => {
-          const parentCat = categories.find(c => c.id === filter.parentId);
+          if (!Array.isArray(categories)) return false;
+          const parentCat = categories.find(c => c && c.id === filter.parentId);
           const sub = parentCat && parentCat.subcategories &&
-            parentCat.subcategories.find(s => s.id === filter.id);
+            parentCat.subcategories.find(s => s && s.id === filter.id);
           return sub && a.subcategory.name === sub.name;
         })();
         return subMatch || nameMatch;
