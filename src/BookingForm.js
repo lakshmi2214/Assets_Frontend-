@@ -725,7 +725,7 @@ export default function AssetBooking() {
                 setStart(null);
                 setEnd(null);
                 setConfirmStage(false);
-                window.location.href = '/bookings';
+                window.location.href = '#/bookings';
               }}
             >
               OK, Great!

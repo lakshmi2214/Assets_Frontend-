@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Link, Navigate } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, Link, Navigate } from 'react-router-dom';
 import { Navbar, Nav, Container, Button, Badge } from 'react-bootstrap';
 import Signup from './Signup';
 import Login from './Login';
@@ -28,7 +28,7 @@ function App() {
     localStorage.removeItem('access');
     localStorage.removeItem('refresh');
     setUser(null);
-    window.location.href = '/login';
+    window.location.href = '#/login';
   };
 
   return (
